@@ -8,6 +8,7 @@ import * as THREE from "three"
 import { OrbitControls } from "@react-three/drei"
 import { Button } from "./ui/button"
 import { cn } from "@/lib/utils"
+import { LogOut, UploadCloud } from "lucide-react"
 
 type QueueItem = {
 	id: string
@@ -88,11 +89,13 @@ export function ThreadsStudio({ credentials, onDisconnect }: Props) {
 		setQueue((s) => [...next, ...s])
 	}, [])
 
-	const handleUpload = useCallback(async (item: QueueItem, file: File) => {
+	const handleUpload = useCallback(async (item: QueueItem) => {
 		setUploading(true)
 		try {
+			const response = await fetch(item.objectUrl)
+			const blob = await response.blob()
 			const fd = new FormData()
-			fd.append("file", file)
+			fd.append("file", new File([blob], item.name, { type: blob.type || "image/png" }))
 			fd.append("clothingType", item.clothingType)
 
 			const res = await fetch("/api/upload-clothing", { method: "POST", body: fd })
@@ -108,111 +111,130 @@ export function ThreadsStudio({ credentials, onDisconnect }: Props) {
 	}, [])
 
 	return (
-		<div className="space-y-6">
-			{/* Top header / Profile widget - PRESERVE exact structure visually */}
-			<div className="flex items-center justify-between rounded-lg border border-border bg-muted p-4">
-				<div className="flex items-center gap-3">
-					<div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-background">P</div>
-					<div>
-						<div className="text-sm font-medium">Profile Name</div>
-						<div className="text-xs text-muted-foreground">Connected as user</div>
+		<div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+			<div className="rounded-2xl border border-border bg-card p-5 shadow-lg shadow-black/20 sm:p-6">
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div className="flex items-center gap-3">
+						<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+							<span className="text-lg font-bold">T</span>
+						</div>
+						<div>
+							<p className="text-sm font-semibold">Threads Studio</p>
+							<p className="text-xs text-muted-foreground">Connected to your Roblox creator workflow.</p>
+						</div>
 					</div>
-				</div>
-
-				<div className="flex items-center gap-3">
-					<Button variant="outline" onClick={onDisconnect}>Disconnect</Button>
-				</div>
-			</div>
-
-			{/* Discord Webhook section - PRESERVE visuals */}
-			<div className="rounded-lg border border-border bg-background p-4">
-				<h3 className="text-sm font-semibold">Discord Webhook</h3>
-				<p className="mt-2 text-sm text-muted-foreground">Webhook URL for notifications</p>
-				<div className="mt-3 flex gap-2">
-					<input className="flex-1 rounded-md border border-input bg-input/10 px-3 py-2 text-sm" placeholder="https://discord.com/api/webhooks/..." />
-					<Button variant="default">Save</Button>
+					<Button variant="outline" className="h-10 gap-2 text-sm" onClick={onDisconnect}>
+						<LogOut className="h-4 w-4" aria-hidden="true" />
+						Disconnect
+					</Button>
 				</div>
 			</div>
 
-			{/* Dropzone */}
-			<div className="rounded-lg border border-border bg-muted p-6">
-				<label className="block text-sm font-medium">Upload 2D Clothing Templates</label>
-				<input
-					type="file"
-					accept="image/png, image/jpeg"
-					multiple
-					onChange={(e) => handleFiles(e.target.files)}
-					className="mt-3"
-				/>
-			</div>
+			<section className="rounded-2xl border border-border bg-card p-5 shadow-lg shadow-black/20 sm:p-6">
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<p className="text-sm font-semibold">Discord Webhook</p>
+						<p className="mt-1 text-sm text-muted-foreground">Send notifications when clothing templates are uploaded.</p>
+					</div>
+					<Button variant="outline" className="h-10 gap-2 text-sm">Save settings</Button>
+				</div>
+				<div className="mt-5 grid gap-4 sm:grid-cols-[1.7fr_0.9fr]">
+					<input
+						type="text"
+						placeholder="https://discord.com/api/webhooks/..."
+						className="h-11 w-full rounded-xl border border-border bg-background/50 px-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/40"
+					/>
+					<input
+						type="text"
+						placeholder="Discord username"
+						className="h-11 w-full rounded-xl border border-border bg-background/50 px-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/40"
+					/>
+				</div>
+			</section>
 
-			{/* Queue list (preserve card design) */}
+			<section className="rounded-2xl border border-border bg-card p-5 shadow-lg shadow-black/20 sm:p-6">
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<p className="text-sm font-semibold">Upload 2D Clothing Templates</p>
+						<p className="mt-1 text-sm text-muted-foreground">Select one or more templates to preview on the 3D model.</p>
+					</div>
+					<span className="rounded-full border border-border bg-background/50 px-3 py-1 text-xs font-medium text-muted-foreground">{queue.length} queued</span>
+				</div>
+				<label className="mt-5 flex h-14 cursor-pointer items-center justify-center gap-3 rounded-3xl border border-dashed border-border bg-background/50 px-4 text-sm text-muted-foreground transition hover:border-primary hover:text-primary">
+					<UploadCloud className="h-5 w-5" aria-hidden="true" />
+					<span>Click to select PNG or JPEG templates</span>
+					<input
+						type="file"
+						accept="image/png, image/jpeg"
+						multiple
+						onChange={(e) => handleFiles(e.target.files)}
+						className="sr-only"
+					/>
+				</label>
+			</section>
+
 			<div className="space-y-4">
 				{queue.map((item) => (
-					<div key={item.id} className="rounded-lg border border-border bg-background p-4">
-						<div className="flex items-start gap-4">
-							<div className="w-28 h-28 rounded-md bg-black/20 overflow-hidden">
-								<Image src={item.objectUrl} alt={item.name} width={112} height={112} className="object-cover w-full h-full" />
+					<section key={item.id} className="rounded-2xl border border-border bg-card p-5 shadow-lg shadow-black/20 sm:p-6">
+						<div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+							<div className="flex-shrink-0 overflow-hidden rounded-3xl border border-border bg-background/80 lg:w-72 lg:h-72">
+								<Image src={item.objectUrl} alt={item.name} width={288} height={288} className="h-full w-full object-cover" />
 							</div>
-
-							<div className="flex-1">
-								<div className="flex items-center justify-between">
+							<div className="flex-1 space-y-4">
+								<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 									<div>
-										<div className="font-medium">{item.name}</div>
-										<div className="text-xs text-muted-foreground">Template</div>
+										<p className="text-base font-semibold">{item.name}</p>
+										<p className="text-xs text-muted-foreground">Clothing template</p>
 									</div>
-
-									<div className="flex items-center gap-2">
-										<Button variant="ghost" size="xs" onClick={() => removeItem(item.id)}>Remove</Button>
-									</div>
+									<Button variant="ghost" size="xs" onClick={() => removeItem(item.id)}>
+										Remove
+									</Button>
 								</div>
 
-								{/* Clothing type toggle (shirt / pants) */}
-								<div className="mt-3 inline-flex rounded-md border border-border bg-transparent">
-									<button
-										className={cn(
-											"px-3 py-1 text-sm rounded-l-md",
-											item.clothingType === "shirt" ? "bg-primary/20 text-primary" : "hover:bg-muted"
-										)}
-										onClick={() => setQueue((q) => q.map((it) => (it.id === item.id ? { ...it, clothingType: "shirt" } : it)))}
-									>
-										Shirt
-									</button>
-									<button
-										className={cn(
-											"px-3 py-1 text-sm rounded-r-md",
-											item.clothingType === "pants" ? "bg-primary/20 text-primary" : "hover:bg-muted"
-										)}
-										onClick={() => setQueue((q) => q.map((it) => (it.id === item.id ? { ...it, clothingType: "pants" } : it)))}
-									>
-										Pants
-									</button>
+								<div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+									<div className="inline-flex overflow-hidden rounded-full border border-border bg-background/80">
+										<button
+											className={cn(
+												"px-3 py-2 text-sm font-medium transition",
+												item.clothingType === "shirt" ? "bg-primary/15 text-primary" : "text-foreground hover:bg-muted"
+											)}
+											onClick={() => setQueue((q) => q.map((it) => (it.id === item.id ? { ...it, clothingType: "shirt" } : it)))}
+										>
+											Shirt
+										</button>
+										<button
+											className={cn(
+												"px-3 py-2 text-sm font-medium transition",
+												item.clothingType === "pants" ? "bg-primary/15 text-primary" : "text-foreground hover:bg-muted"
+											)}
+											onClick={() => setQueue((q) => q.map((it) => (it.id === item.id ? { ...it, clothingType: "pants" } : it)))}
+										>
+											Pants
+										</button>
+									</div>
+									<Button variant="secondary" size="sm" onClick={() => handleUpload(item)} disabled={uploading}>
+										Upload
+									</Button>
 								</div>
 
-								{/* 3D Preview Canvas (replace audio player) */}
-								<div className="mt-4">
-									<div className="h-72 w-full rounded-xl bg-black/20">
+								<div className="rounded-3xl border border-border bg-background/80 p-4">
+									<div className="h-72 w-full overflow-hidden rounded-3xl bg-black/10">
 										<Canvas camera={{ position: [0, 1, 4] }}>
 											<ambientLight intensity={0.5} />
 											<directionalLight position={[10, 10, 10]} intensity={1} />
 											<OrbitControls />
 											<Suspense fallback={null}>
-												<ModelWithTexture url={item.objectUrl} clothingType={item.clothingType} />
-											</Suspense>
-										</Canvas>
+													<ModelWithTexture url={item.objectUrl} clothingType={item.clothingType} />
+												</Suspense>
+											</Canvas>
+										</div>
 									</div>
 								</div>
-
-								<div className="mt-4 flex items-center gap-2">
-									<Button variant="default" onClick={() => alert("Edit template (not implemented)")}>Edit</Button>
-									<Button variant="secondary" onClick={() => alert("Apply to game (not implemented)")}>Apply</Button>
-								</div>
 							</div>
-						</div>
-					</div>
-				))}
+						</section>
+					))}
+				</div>
 			</div>
-		</div>
 	)
 }
 
